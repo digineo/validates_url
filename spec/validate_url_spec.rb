@@ -351,4 +351,18 @@ RSpec.describe 'URL validation' do
       expect(user.errors[:homepage]).to eq(['wrong'])
     end
   end
+
+  context 'with addressable' do
+    let!(:user) { UserWithAddressable.new }
+
+    it "does not allow a url with a space in the querystring" do
+      user.homepage = "http://example.com/some/? doodads=ok"
+      expect(user).to be_valid # TODO
+    end
+
+    it "does allow placeholders" do
+      user.homepage = "http://example.com/some/{?doodads}"
+      expect(user).to be_valid
+    end
+  end
 end

@@ -8,12 +8,28 @@ module ActiveModel
     class UrlValidator < ActiveModel::EachValidator
       RESERVED_OPTIONS = [:schemes, :no_local]
 
+      URI_ERRORS = begin
+        list = [URI::InvalidURIError, URI::InvalidComponentError]
+
+        if defined?(Addressable)
+          list << Addressable::Template::InvalidTemplateOperatorError
+          list << Addressable::Template::InvalidTemplateValueError
+          list << Addressable::Template::TemplateOperatorAbortedError
+          list << Addressable::URI::InvalidURIError
+        end
+
+        list.freeze
+      end
+
       def initialize(options)
         options.reverse_merge!(schemes: %w(http https))
         options.reverse_merge!(message: :url)
         options.reverse_merge!(no_local: false)
         options.reverse_merge!(public_suffix: false)
         options.reverse_merge!(accept_array: false)
+
+        options.reverse_merge!(addressable_template: false)
+        options[:addressable_template] &&= {}
 
         super(options)
       end
@@ -50,11 +66,15 @@ module ActiveModel
       end
 
       def validate_url(record, attribute, value, schemes)
-        uri = URI.parse(value)
+        uri = if options[:addressable_template]
+          Addressable::Template.new(value).expand(options[:addressable_template])
+        else
+          URI.parse(value)
+        end
         host = uri && uri.host
         scheme = uri && uri.scheme
 
-        valid_raw_url = scheme && value =~ /\A#{URI::regexp([scheme])}\z/
+        valid_raw_url = options[:addressable_template] || (scheme && value =~ /\A#{URI::regexp([scheme])}\z/)
         valid_scheme = host && scheme && schemes.include?(scheme)
         valid_no_local = !options.fetch(:no_local) || (host && host.include?('.'))
         valid_suffix = !options.fetch(:public_suffix) || (host && PublicSuffix.valid?(host, :default_rule => nil))
@@ -62,7 +82,7 @@ module ActiveModel
         unless valid_raw_url && valid_scheme && valid_no_local && valid_suffix
           record.errors.add(attribute, options.fetch(:message), value: value)
         end
-      rescue URI::InvalidURIError, URI::InvalidComponentError
+      rescue *URI_ERRORS
         record.errors.add(attribute, :url, **filtered_options(value))
       end
     end
@@ -81,7 +101,7 @@ module ActiveModel
       # * <tt>:allow_nil</tt> - If set to true, skips this validation if the attribute is +nil+ (default is +false+).
       # * <tt>:allow_blank</tt> - If set to true, skips this validation if the attribute is blank (default is +false+).
       # * <tt>:schemes</tt> - Array of URI schemes to validate against. (default is +['http', 'https']+)
-
+      # * <tt>:addressable_template</tt> - Allows +Addressable::Template+. (default is +false+)
       def validates_url(*attr_names)
         validates_with UrlValidator, _merge_attributes(attr_names)
       end

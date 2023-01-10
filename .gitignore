@@ -5,3 +5,7 @@ test/tmp
 tmp
 .idea
 .DS_Store
+
+.ruby-version
+.ruby-gemset
+.gems
