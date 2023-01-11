@@ -76,7 +76,7 @@ module ActiveModel
 
         valid_raw_url = options[:addressable_template] || (scheme && value =~ /\A#{URI::regexp([scheme])}\z/)
         valid_scheme = host && scheme && schemes.include?(scheme)
-        valid_no_local = !options.fetch(:no_local) || (host && host.include?('.'))
+        valid_no_local = !options.fetch(:no_local) || (host && host.include?('.') && host !~ /^127\.\d+\.\d+\.\d+/ && host != "[::1]")
         valid_suffix = !options.fetch(:public_suffix) || (host && PublicSuffix.valid?(host, :default_rule => nil))
 
         unless valid_raw_url && valid_scheme && valid_no_local && valid_suffix

@@ -48,6 +48,20 @@ RSpec.describe 'URL validation' do
       expect(user).to be_valid
     end
 
+    it 'allow loopback IPv4 addresses' do
+      user.homepage = 'http://127.0.0.1'
+      expect(user).to be_valid
+
+      user.homepage = 'http://127.127.255.10'
+      expect(user).to be_valid
+    end
+
+    it 'allows loopback IPv6 address' do
+      user.homepage = 'http://[::1]'
+
+      expect(user).to be_valid
+    end
+
     it 'does not allow a url with an invalid scheme' do
       user.homepage = 'ftp://localhost'
 
@@ -186,6 +200,20 @@ RSpec.describe 'URL validation' do
 
     it 'does not allow a local hostname' do
       user.homepage = 'http://localhost'
+
+      expect(user).not_to be_valid
+    end
+
+    it 'does not allow loopback IPv4 addresses' do
+      user.homepage = 'http://127.0.0.1'
+      expect(user).not_to be_valid
+
+      user.homepage = 'http://127.127.255.10'
+      expect(user).not_to be_valid
+    end
+
+    it 'does not allow loopback IPv6 address' do
+      user.homepage = 'http://[::1]'
 
       expect(user).not_to be_valid
     end
